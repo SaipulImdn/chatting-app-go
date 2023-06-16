@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket</title>
+
+    <style type="text/css">
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('/public/gambar.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .chat-log {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+        }
+
+        .chat-message b {
+            font-weight: bold;
+        }
+
+        .form {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form input[type="text"] {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            flex: 1;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .form button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4caf50;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>WebSocket Chat</h2>
+        </div>
+
+        <div class="chat-log" id="chatLog"></div>
+
+        <div class="form">
+            <input type="text" id="messageInput" placeholder="Enter message">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var app = {};
+        app.ws = undefined;
+        app.chatLog = undefined;
+        app.messageInput = undefined;
+
+        app.printMessage = function (message) {
+            var messageElement = document.createElement("div");
+            messageElement.classList.add("chat-message");
+            messageElement.innerHTML = message;
+            app.chatLog.appendChild(messageElement);
+            app.chatLog.scrollTop = app.chatLog.scrollHeight;
+        };
+
+        app.init = function () {
+            if (!window.WebSocket) {
+                alert('Your browser does not support WebSocket');
+                return;
+            }
+
+            var name = prompt('Enter your name please:') || "No name";
+
+            app.chatLog = document.getElementById("chatLog");
+            app.messageInput = document.getElementById("messageInput");
+
+            app.ws = new WebSocket("ws://192.168.31.170:8080/ws?username=" + name);
+
+            app.ws.onopen = function () {
+                var message = '<b>me</b>: connected';
+                app.printMessage(message);
+            };
+
+            app.ws.onmessage = function (event) {
+                var res = JSON.parse(event.data);
+
+                var message = '';
+                if (res.Type === 'New User') {
+                    message = 'User <b>' + res.From + '</b>: connected';
+                } else if (res.Type === 'Leave') {
+                    message = 'User <b>' + res.From + '</b>: disconnected';
+                } else {
+                    message = '<b>' + res.From + '</b>: ' + res.Message;
+                }
+
+                app.printMessage(message);
+            };
+
+            app.ws.onclose = function () {
+                var message = '<b>me</b>: disconnected';
+                app.printMessage(message);
+            };
+        };
+
+        function sendMessage() {
+            var messageRaw = app.messageInput.value;
+            if (messageRaw.trim() === "") {
+                return;
+            }
+
+            app.ws.send(JSON.stringify({
+                Message: messageRaw
+            }));
+
+            var message = '<b>me</b>: ' + messageRaw;
+            app.printMessage(message);
+
+            app.messageInput.value = '';
+        }
+
+        window.onload = app.init;
+    </script>
+</body>
+</html>
